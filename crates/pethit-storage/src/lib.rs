@@ -5,12 +5,11 @@ use std::collections::HashMap;
 /// A simple in-memory Key-Value database.
 /// This struct holds one piece of data: the HashMap.
 #[derive(Debug, Default)]
-pub struct SimpleStorage{
+pub struct SimpleStorage {
     db: HashMap<Vec<u8>, Vec<u8>>,
 }
 
-impl SimpleStorage{
-
+impl SimpleStorage {
     /// Creates a new, empty storage instance.
     pub fn new() -> Self {
         // Default::default() tells Rust how to create a default SimpleStorage (one with an empty HashMap).
@@ -20,27 +19,25 @@ impl SimpleStorage{
     /// Insert a new key-value pair in the database.
     /// We use `Vec<u8>` (a vector of bytes) because this is the
     /// raw data format blockchains use for everything.
-    pub fn put(&mut self, key: Vec<u8>, value: Vec<u8>){
+    pub fn put(&mut self, key: Vec<u8>, value: Vec<u8>) {
         self.db.insert(key, value);
     }
 
     /// Retrieves a value from the database given the key.
     /// It returns Option because the key might not exist.
-    pub fn get(&self, key: &[u8]) -> Option<&Vec<u8>>{
+    pub fn get(&self, key: &[u8]) -> Option<&Vec<u8>> {
         self.db.get(key)
     }
 }
 
-
 // Tests
 #[cfg(test)]
-mod tests{
+mod tests {
 
     use super::*;
 
     #[test]
-    fn it_puts_and_gets(){
-
+    fn it_puts_and_gets() {
         // Create an instance of SimpleStorage
         let mut storage = SimpleStorage::new();
 
@@ -56,6 +53,5 @@ mod tests{
 
         // Assert that the returned value is the same as the original value
         assert_eq!(retrieved_value, Some(&value1));
-
     }
-}   
+}
