@@ -3,6 +3,13 @@
 version = 4
 
 [[package]]
+name = "pethit-execution"
+version = "0.1.0"
+dependencies = [
+ "pethit-storage",
+]
+
+[[package]]
 name = "pethit-node"
 version = "0.1.0"
 

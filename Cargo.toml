@@ -3,4 +3,5 @@ resolver = "3"
 members = [
     "crates/pethit-node",
     "crates/pethit-storage",
+    "crates/pethit-execution",
 ]
