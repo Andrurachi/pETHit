@@ -54,4 +54,14 @@ mod tests {
         // Assert that the returned value is the same as the original value
         assert_eq!(retrieved_value, Some(&value1));
     }
+
+    #[test]
+    fn it_returns_none_for_missing_key() {
+        let storage = SimpleStorage::new();
+        let key_missing = b"missing_key".to_vec();
+
+        let retrieved_value = storage.get(&key_missing);
+
+        assert_eq!(retrieved_value, None);
+    }
 }
