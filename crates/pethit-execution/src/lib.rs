@@ -5,33 +5,33 @@ use pethit_storage::SimpleStorage;
 /// A Transaction is a request to change the state.
 /// In Iteration 1, a transaction is simply:
 /// "Please save this Value under this Key."
+#[derive(Debug)]
 pub struct Transaction {
     pub key: Vec<u8>,
     pub value: Vec<u8>,
 }
 
 #[derive(Debug)]
-pub struct ExecutionEngine {
-    // The engine needs access to storage to do its job.
-    storage: SimpleStorage,
-}
+// The ExecutionEngine holds no state/data, it only holds the logic.
+pub struct ExecutionEngine;
 
 impl ExecutionEngine {
     // Since storage wil be muted, ownership of storage is moved into the engine for simplicity
-    pub fn new(storage: SimpleStorage) -> Self {
-        Self { storage }
+    pub fn new() -> Self {
+        ExecutionEngine {}
     }
 
     /// The Core Function: execute a transaction.
-    /// It takes a transaction and applies it to the storage.
-    pub fn execute(&mut self, tx: Transaction) {
+    /// Takes a mutable borrow of the storage (`&mut SimpleStorage`)and applies the tx to the storage.
+    pub fn execute(storage: &mut SimpleStorage, tx: Transaction) {
         // Signatures will be checked here. Now it trust tx and write to db
-        self.storage.put(tx.key, tx.value);
+        storage.put(tx.key, tx.value);
     }
 
     // A helper to see the current state
-    pub fn get_state(&self, key: &[u8]) -> Option<&Vec<u8>> {
-        self.storage.get(key)
+    // Lifetimes are needed because the return data is borrowed from SimpleStorage
+    pub fn get_state<'a>(storage: &'a SimpleStorage, key: &[u8]) -> Option<&'a Vec<u8>> {
+        storage.get(key)
     }
 }
 
@@ -42,8 +42,7 @@ mod tests {
     #[test]
     fn it_executes_a_transaction() {
         // setup
-        let storage = SimpleStorage::new();
-        let mut engine = ExecutionEngine::new(storage);
+        let mut storage = SimpleStorage::new();
 
         // create tx
         let tx = Transaction {
@@ -52,10 +51,10 @@ mod tests {
         };
 
         // Run the tx
-        engine.execute(tx);
+        ExecutionEngine::execute(&mut storage, tx);
 
         // Verify the state changed
-        let result = engine.get_state(b"This is the key");
+        let result = ExecutionEngine::get_state(&storage, b"This is the key");
         assert_eq!(result, Some(&b"This is the value".to_vec()));
     }
 }
