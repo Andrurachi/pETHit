@@ -5,4 +5,5 @@ members = [
     "crates/pethit-storage",
     "crates/pethit-execution",
     "crates/pethit-rpc",
+    "crates/pethit-txpool",
 ]

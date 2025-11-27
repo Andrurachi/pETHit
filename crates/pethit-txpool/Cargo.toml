@@ -1,0 +1,7 @@
+[package]
+name = "pethit-txpool"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+pethit-execution ={ path = "../pethit-execution" }

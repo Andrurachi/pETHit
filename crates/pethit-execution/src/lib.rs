@@ -5,7 +5,7 @@ use pethit_storage::SimpleStorage;
 /// A Transaction is a request to change the state.
 /// In Iteration 1, a transaction is simply:
 /// "Please save this Value under this Key."
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Transaction {
     pub key: Vec<u8>,
     pub value: Vec<u8>,
