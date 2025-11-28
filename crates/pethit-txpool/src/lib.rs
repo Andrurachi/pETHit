@@ -1,69 +1,149 @@
-use pethit_execution::Transaction;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use pethit_execution::Transaction;
 
-// Generic error type for simplicity
+// A simple error type
 pub type PoolError = String;
 
-/// The internal storage
-/// We use HashMap where Key = the value itself and value = ()
-struct Txpool {
+/// This doesn't know about threads, just data.
+struct TxPool {
+    // The Transaction itself is the Key (for deduplication).
+    // The Value is empty unit type (no needed extra metadata yet).
     transactions: HashMap<Transaction, ()>,
 }
 
-impl Txpool {
-    pub fn new() -> Self {
+impl TxPool {
+    fn new() -> Self {
         Self {
             transactions: HashMap::new(),
         }
     }
 
-    /// Adds a transaction to the pool
-    pub fn add(&mut self, tx: Transaction) -> Result<(), PoolError> {
-        // If it exists, it updates it. If not, it inserts.
-        // Already handles deduplication thanks to value = ()
+    fn add(&mut self, tx: Transaction) {
+        // HashMap::insert automatically overwrites if key exists (deduplication)
         self.transactions.insert(tx, ());
-        Ok(())
     }
 
-    /// Return all transactions to be included in a block.
-    pub fn get_all(&self) -> Vec<Transaction> {
+    fn get_all(&self) -> Vec<Transaction> {
+        // Return a cloned list of all keys (transactions)
         self.transactions.keys().cloned().collect()
     }
 
-    /// Clears the pool (called after a block is mined)
     pub fn clear(&mut self) {
+        // Clears the pool (called after a block is mined)
         self.transactions.clear();
     }
 }
 
-// "Public API" that is passed around
-// Wraps the raw Txpool in an Arc<Mutex<>>
+/// The Thread-Safe Public Interface.
+/// This is what we pass around the application.
 #[derive(Clone)]
-pub struct ShareTxPool {
-    inner: Arc<Mutex<Txpool>>,
+pub struct SharedTxPool {
+    // Arc allows multiple owners.
+    // Mutex allows exclusive access (mutability).
+    inner: Arc<Mutex<TxPool>>,
 }
 
-impl ShareTxPool {
+impl SharedTxPool {
     pub fn new() -> Self {
         Self {
-            inner: Arc::new(Mutex::new(Txpool::new())),
+            inner: Arc::new(Mutex::new(TxPool::new())),
         }
     }
-    pub fn add(self, tx: Transaction) -> Result<(), PoolError> {
+
+    /// Adds a transaction to the pool in a thread-safe way.
+    pub fn add(&self, tx: Transaction) -> Result<(), PoolError> {
         // Lock the Mutex
         let mut pool = self.inner.lock().map_err(|_| "Lock poisoned".to_string())?;
         // Call the internal function
-        pool.add(tx)
+        pool.add(tx);
+        
+        Ok(())
     }
 
-    pub fn get_all_transactions(self) -> Vec<Transaction> {
+    /// Retrieves all transactions.
+    pub fn get_all_transactions(&self) -> Vec<Transaction> {
         let pool = self.inner.lock().unwrap();
         pool.get_all()
     }
-
+    
+    /// Clears the pool
     pub fn clear(&self) {
         let mut pool = self.inner.lock().unwrap();
         pool.clear();
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::thread;
+
+    #[test]
+    fn test_add_transaction() {
+        let pool = SharedTxPool::new();
+        let tx = Transaction {
+            key: b"key".to_vec(),
+            value: b"value".to_vec(),
+        };
+
+        // Add it
+        pool.add(tx.clone()).unwrap();
+
+        // Check it exists
+        let all_txs = pool.get_all_transactions();
+        assert_eq!(all_txs.len(), 1);
+        assert_eq!(all_txs[0], tx);
+    }
+
+    #[test]
+    fn test_deduplication() {
+        let pool = SharedTxPool::new();
+        let tx = Transaction {
+            key: b"same".to_vec(),
+            value: b"same".to_vec(),
+        };
+
+        // Add the EXACT SAME tx twice
+        pool.add(tx.clone()).unwrap();
+        pool.add(tx.clone()).unwrap();
+
+        // Should only have 1 in storage
+        let all_txs = pool.get_all_transactions();
+        assert_eq!(all_txs.len(), 1);
+    }
+
+    #[test]
+    fn test_concurrency_multiple_threads() {
+        let pool = SharedTxPool::new();
+        let mut handles = vec![];
+
+        // Spawn 10 threads
+        for i in 0..10 {
+            // Clone the "handle" to the pool for this thread
+            let pool_clone = pool.clone();
+
+            let handle = thread::spawn(move || {
+                // Create a unique tx (based on index)
+                let tx = Transaction {
+                    key: format!("key_{}", i).into_bytes(),
+                    value: b"val".to_vec(),
+                };
+                
+                pool_clone.add(tx).unwrap();
+            });
+
+            handles.push(handle);
+        }
+
+        // Wait for all threads to finish
+        for handle in handles {
+            handle.join().unwrap();
+        }
+
+        // If locking works, we should have exactly 10 transactions.
+        let all_txs = pool.get_all_transactions();
+        assert_eq!(all_txs.len(), 10);
     }
 }
