@@ -37,6 +37,12 @@ pub struct SharedStorage {
     inner: Arc<Mutex<SimpleStorage>>,
 }
 
+impl Default for SharedStorage {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SharedStorage {
     pub fn new() -> Self {
         Self {
@@ -53,7 +59,7 @@ impl SharedStorage {
     // The RPC uses this to check balances.
     pub fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
         let db = self.inner.lock().unwrap();
-        db.get(&key)
+        db.get(key)
     }
 
     // The "Guard" method the Miner uses to modify the db.

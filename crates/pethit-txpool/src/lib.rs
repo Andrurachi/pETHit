@@ -44,6 +44,12 @@ pub struct SharedTxPool {
     inner: Arc<Mutex<TxPool>>,
 }
 
+impl Default for SharedTxPool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SharedTxPool {
     pub fn new() -> Self {
         Self {

@@ -13,6 +13,12 @@ pub struct Transaction {
 // The ExecutionEngine holds no state/data, it only holds the logic.
 pub struct ExecutionEngine;
 
+impl Default for ExecutionEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ExecutionEngine {
     // Since storage wil be muted, ownership of storage is moved into the engine for simplicity
     pub fn new() -> Self {
@@ -27,7 +33,7 @@ impl ExecutionEngine {
     }
 
     // A helper to see the current state
-    pub fn get_state<'a>(storage: &SimpleStorage, key: &[u8]) -> Option<Vec<u8>> {
+    pub fn get_state(storage: &SimpleStorage, key: &[u8]) -> Option<Vec<u8>> {
         storage.get(key)
     }
 }
