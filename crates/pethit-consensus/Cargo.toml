@@ -1,0 +1,9 @@
+[package]
+name = "pethit-consensus"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+pethit-execution = { path = "../pethit-execution" }
+pethit-storage = { path = "../pethit-storage" }
+pethit-txpool = { path = "../pethit-txpool" }
