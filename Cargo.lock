@@ -334,7 +334,10 @@ dependencies = [
 name = "pethit-node"
 version = "0.1.0"
 dependencies = [
+ "pethit-consensus",
  "pethit-rpc",
+ "pethit-storage",
+ "pethit-txpool",
  "tokio",
 ]
 
@@ -344,6 +347,8 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "pethit-execution",
+ "pethit-storage",
+ "pethit-txpool",
  "serde",
  "serde_json",
  "tokio",

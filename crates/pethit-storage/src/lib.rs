@@ -29,6 +29,7 @@ impl SimpleStorage {
 }
 
 /// The Thread-Safe Public Interface.
+#[derive(Clone)]
 pub struct SharedStorage {
     inner: Arc<Mutex<SimpleStorage>>,
 }

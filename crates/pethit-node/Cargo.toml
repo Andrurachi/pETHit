@@ -4,5 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-pethit-rpc ={ path = "../pethit-rpc" }
+pethit-rpc = { path = "../pethit-rpc" }
+pethit-storage = { path = "../pethit-storage" }
+pethit-txpool = { path = "../pethit-txpool" }
+pethit-consensus = { path = "../pethit-consensus" }
 tokio = { version = "1.0", features = ["full"] }

@@ -1,5 +1,6 @@
-use axum::{Json, Router, routing::post};
+use axum::{Json, Router, routing::post, extract::State};
 use pethit_execution::Transaction;
+use pethit_txpool::SharedTxPool;
 use serde::Deserialize;
 use std::net::SocketAddr;
 
@@ -10,26 +11,41 @@ struct TransactionRequest {
     value: String,
 }
 
+#[derive(Clone)]
+struct AppState {
+    txpool: SharedTxPool,
+}
+
 // Handler
 // This function runs when someone hits the POST /send_tx endpoint.
-async fn send_transaction(Json(payload): Json<TransactionRequest>) -> String {
+async fn send_transaction(
+    State(state): State<AppState>, 
+    Json(payload): Json<TransactionRequest>,
+) -> String {
     let tx = Transaction {
         key: payload.key.into_bytes(),
         value: payload.value.into_bytes(),
     };
 
-    // Add it to mempool (just print it for now).
-    // Use {:?} so we need Debug on Transaction
-    println!("Received tx: Key={:?}, Value={:?}", tx.key, tx.value);
+    // Add it to the pool from the state
+    if let Err(e) = state.txpool.add(tx.clone()) {
+        return format!("Error adding to pool: {}", e);
+    }
 
     // Reply to the user
+    println!("Added to pool: Key={:?}", String::from_utf8_lossy(&tx.key));
     "Transaction received and printed!".to_string()
 }
 
 // The Server Builder
-pub async fn start_server() {
-    // Define routes
-    let app = Router::new().route("/send_tx", post(send_transaction));
+pub async fn start_server(txpool: SharedTxPool) {
+    // Create the state object
+    let state = AppState { txpool };
+
+    // Build the router and inject the state
+    let app = Router::new()
+        .route("/send_tx", post(send_transaction))
+        .with_state(state);
 
     // Define the address
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
