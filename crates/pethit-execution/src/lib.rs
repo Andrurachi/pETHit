@@ -1,5 +1,3 @@
-// pethit-execution/src/lib.rs
-
 use pethit_storage::SimpleStorage;
 
 /// A Transaction is a request to change the state.
@@ -23,14 +21,13 @@ impl ExecutionEngine {
 
     /// The Core Function: execute a transaction.
     /// Takes a mutable borrow of the storage (`&mut SimpleStorage`)and applies the tx to the storage.
-    pub fn execute(storage: &mut SimpleStorage, tx: Transaction) {
+    pub fn execute(storage: &mut SimpleStorage, tx: &Transaction) {
         // Signatures will be checked here. Now it trust tx and write to db
-        storage.put(tx.key, tx.value);
+        storage.put(tx.key.clone(), tx.value.clone());
     }
 
     // A helper to see the current state
-    // Lifetimes are needed because the return data is borrowed from SimpleStorage
-    pub fn get_state<'a>(storage: &'a SimpleStorage, key: &[u8]) -> Option<&'a Vec<u8>> {
+    pub fn get_state<'a>(storage: &SimpleStorage, key: &[u8]) -> Option<Vec<u8>> {
         storage.get(key)
     }
 }
@@ -51,10 +48,10 @@ mod tests {
         };
 
         // Run the tx
-        ExecutionEngine::execute(&mut storage, tx);
+        ExecutionEngine::execute(&mut storage, &tx);
 
         // Verify the state changed
         let result = ExecutionEngine::get_state(&storage, b"This is the key");
-        assert_eq!(result, Some(&b"This is the value".to_vec()));
+        assert_eq!(result, Some(b"This is the value".to_vec()));
     }
 }

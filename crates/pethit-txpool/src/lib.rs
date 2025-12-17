@@ -29,7 +29,7 @@ impl TxPool {
         self.transactions.keys().cloned().collect()
     }
 
-    pub fn clear(&mut self) {
+    fn clear(&mut self) {
         // Clears the pool (called after a block is mined)
         self.transactions.clear();
     }

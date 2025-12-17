@@ -1,12 +1,10 @@
-// pethit-storage/src/lib.rs
-
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::{Arc, Mutex}};
 
 /// A simple in-memory Key-Value database.
 /// This struct holds one piece of data: the HashMap.
 #[derive(Debug, Default)]
 pub struct SimpleStorage {
-    db: HashMap<Vec<u8>, Vec<u8>>,
+    pub db: HashMap<Vec<u8>, Vec<u8>>,
 }
 
 impl SimpleStorage {
@@ -25,8 +23,42 @@ impl SimpleStorage {
 
     /// Retrieves a value from the database given the key.
     /// It returns Option because the key might not exist.
-    pub fn get(&self, key: &[u8]) -> Option<&Vec<u8>> {
-        self.db.get(key)
+    pub fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
+        self.db.get(key).cloned()
+    }
+}
+
+/// The Thread-Safe Public Interface.
+pub struct SharedStorage {
+    inner: Arc<Mutex<SimpleStorage>>,
+}
+
+impl SharedStorage {
+    pub fn new() -> Self {
+        Self { 
+            inner: Arc::new(Mutex::new(SimpleStorage::new())),
+        }
+    }
+
+    /// Insert a new key-value pair in the database.
+    pub fn put(&self, key: Vec<u8>, value: Vec<u8>) {
+        let mut db = self.inner.lock().unwrap();
+        db.put(key, value);
+    }
+
+    // The RPC uses this to check balances.
+    pub fn get(&self, key:&[u8]) -> Option<Vec<u8>> {
+        let db = self.inner.lock().unwrap();
+        db.get(&key)
+    }
+
+    // The "Guard" method the Miner uses to modify the db.
+    pub fn update<F>(&self, f: F) 
+    where 
+        F: FnOnce(&mut SimpleStorage) 
+    {
+        let mut db = self.inner.lock().unwrap();
+        f(&mut db);
     }
 }
 
@@ -39,7 +71,7 @@ mod tests {
     #[test]
     fn it_puts_and_gets() {
         // Create an instance of SimpleStorage
-        let mut storage = SimpleStorage::new();
+        let storage = SharedStorage::new();
 
         // Create a kv sample in vec<u8>
         let key1 = b"This is the key".to_vec();
@@ -52,7 +84,7 @@ mod tests {
         let retrieved_value = storage.get(&key1);
 
         // Assert that the returned value is the same as the original value
-        assert_eq!(retrieved_value, Some(&value1));
+        assert_eq!(retrieved_value, Some(value1));
     }
 
     #[test]
