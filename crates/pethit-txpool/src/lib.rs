@@ -1,6 +1,6 @@
+use pethit_execution::Transaction;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use pethit_execution::Transaction;
 
 // A simple error type
 pub type PoolError = String;
@@ -57,7 +57,7 @@ impl SharedTxPool {
         let mut pool = self.inner.lock().map_err(|_| "Lock poisoned".to_string())?;
         // Call the internal function
         pool.add(tx);
-        
+
         Ok(())
     }
 
@@ -66,14 +66,13 @@ impl SharedTxPool {
         let pool = self.inner.lock().unwrap();
         pool.get_all()
     }
-    
+
     /// Clears the pool
     pub fn clear(&self) {
         let mut pool = self.inner.lock().unwrap();
         pool.clear();
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -130,7 +129,7 @@ mod tests {
                     key: format!("key_{}", i).into_bytes(),
                     value: b"val".to_vec(),
                 };
-                
+
                 pool_clone.add(tx).unwrap();
             });
 

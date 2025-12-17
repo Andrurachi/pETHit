@@ -1,4 +1,4 @@
-use axum::{Json, Router, routing::post, extract::State};
+use axum::{Json, Router, extract::State, routing::post};
 use pethit_execution::Transaction;
 use pethit_txpool::SharedTxPool;
 use serde::Deserialize;
@@ -19,7 +19,7 @@ struct AppState {
 // Handler
 // This function runs when someone hits the POST /send_tx endpoint.
 async fn send_transaction(
-    State(state): State<AppState>, 
+    State(state): State<AppState>,
     Json(payload): Json<TransactionRequest>,
 ) -> String {
     let tx = Transaction {

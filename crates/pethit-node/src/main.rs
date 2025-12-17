@@ -1,7 +1,7 @@
-use pethit_rpc::start_server;
-use pethit_txpool::SharedTxPool;
 use pethit_consensus::Miner;
+use pethit_rpc::start_server;
 use pethit_storage::SharedStorage;
+use pethit_txpool::SharedTxPool;
 
 #[tokio::main] // turns `main` into an async function
 async fn main() {

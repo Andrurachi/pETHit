@@ -1,7 +1,7 @@
-use std::{thread, time::Duration};
 use pethit_execution::{ExecutionEngine, Transaction};
-use pethit_txpool::SharedTxPool;
 use pethit_storage::SharedStorage;
+use pethit_txpool::SharedTxPool;
+use std::{thread, time::Duration};
 
 #[derive(Debug, Clone)]
 pub struct Block {
@@ -17,7 +17,6 @@ pub struct Miner {
 }
 
 impl Miner {
-
     /// The Miner is initialized with existing handles to the Pool and Storage.
     pub fn new(txpool: SharedTxPool, storage: SharedStorage) -> Self {
         Self {
@@ -28,7 +27,7 @@ impl Miner {
         }
     }
 
-    /// The "Heartbeat" loop. 
+    /// The "Heartbeat" loop.
     /// 'mut self' because we update 'block_num' and 'blockchain'.
     pub fn start_mining(mut self) {
         println!("Miner initialized and starting heartbeat...");
@@ -40,7 +39,7 @@ impl Miner {
 
     fn mine_block(&mut self) {
         // Pull transactions from the shared pool
-        let txs= self.txpool.get_all_transactions();
+        let txs = self.txpool.get_all_transactions();
         // If there are txs, update the STATE
         if !txs.is_empty() {
             // .update() pattern is used to lock the DB once and run all transactions through the Engine.
@@ -59,7 +58,11 @@ impl Miner {
             transactions: txs,
         };
 
-        println!("Mined Block #{} with {} txs", block.id, block.transactions.len());
+        println!(
+            "Mined Block #{} with {} txs",
+            block.id,
+            block.transactions.len()
+        );
 
         // Save to history and clear the pool
         self.blockchain.push(block);
