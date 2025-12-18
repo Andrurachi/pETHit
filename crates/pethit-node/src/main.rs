@@ -23,5 +23,5 @@ async fn main() {
     });
 
     // Start the RPC server. Pause here until the server stops (never)
-    start_server(shared_txpool).await;
+    start_server(shared_txpool, shared_storage).await;
 }
