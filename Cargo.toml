@@ -8,3 +8,6 @@ members = [
     "crates/pethit-txpool", 
     "crates/pethit-consensus",
 ]
+
+[workspace.dependencies]
+alloy-primitives = { version = "1.5.0" }
