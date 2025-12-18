@@ -316,7 +316,7 @@ checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 
 [[package]]
 name = "pethit-consensus"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "pethit-execution",
  "pethit-storage",
@@ -325,14 +325,14 @@ dependencies = [
 
 [[package]]
 name = "pethit-execution"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "pethit-storage",
 ]
 
 [[package]]
 name = "pethit-node"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "pethit-consensus",
  "pethit-rpc",
@@ -343,7 +343,7 @@ dependencies = [
 
 [[package]]
 name = "pethit-rpc"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "axum",
  "pethit-execution",
@@ -356,11 +356,11 @@ dependencies = [
 
 [[package]]
 name = "pethit-storage"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "pethit-txpool"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "pethit-execution",
 ]
