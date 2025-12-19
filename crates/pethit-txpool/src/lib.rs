@@ -1,3 +1,4 @@
+use alloy_primitives::B256;
 use pethit_execution::Transaction;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -9,7 +10,7 @@ pub type PoolError = String;
 struct TxPool {
     // The Transaction itself is the Key (for deduplication).
     // The Value is empty unit type (no needed extra metadata yet).
-    transactions: HashMap<Transaction, ()>,
+    transactions: HashMap<B256, Transaction>,
 }
 
 impl TxPool {
@@ -19,14 +20,14 @@ impl TxPool {
         }
     }
 
-    fn add(&mut self, tx: Transaction) {
+    fn add(&mut self, k_hash: &B256, tx: &Transaction) {
         // HashMap::insert automatically overwrites if key exists (deduplication)
-        self.transactions.insert(tx, ());
+        self.transactions.insert(*k_hash, tx.clone());
     }
 
     fn get_all(&self) -> Vec<Transaction> {
-        // Return a cloned list of all keys (transactions)
-        self.transactions.keys().cloned().collect()
+        // Return a cloned list of all transactions
+        self.transactions.values().cloned().collect()
     }
 
     fn clear(&mut self) {
@@ -58,11 +59,11 @@ impl SharedTxPool {
     }
 
     /// Adds a transaction to the pool in a thread-safe way.
-    pub fn add(&self, tx: Transaction) -> Result<(), PoolError> {
+    pub fn add(&self, k_hash: &B256, tx: &Transaction) -> Result<(), PoolError> {
         // Lock the Mutex
         let mut pool = self.inner.lock().map_err(|_| "Lock poisoned".to_string())?;
         // Call the internal function
-        pool.add(tx);
+        pool.add(k_hash, tx);
 
         Ok(())
     }
@@ -92,9 +93,10 @@ mod tests {
             key: b"key".to_vec(),
             value: b"value".to_vec(),
         };
+        let k_hash = tx.hash();
 
         // Add it
-        pool.add(tx.clone()).unwrap();
+        pool.add(&k_hash, &tx).unwrap();
 
         // Check it exists
         let all_txs = pool.get_all_transactions();
@@ -109,10 +111,11 @@ mod tests {
             key: b"same".to_vec(),
             value: b"same".to_vec(),
         };
+        let k_hash = tx.hash();
 
-        // Add the EXACT SAME tx twice
-        pool.add(tx.clone()).unwrap();
-        pool.add(tx.clone()).unwrap();
+        // Add the exact same tx twice
+        pool.add(&k_hash, &tx).unwrap();
+        pool.add(&k_hash, &tx).unwrap();
 
         // Should only have 1 in storage
         let all_txs = pool.get_all_transactions();
@@ -135,8 +138,9 @@ mod tests {
                     key: format!("key_{}", i).into_bytes(),
                     value: b"val".to_vec(),
                 };
+                let k_hash = tx.hash();
 
-                pool_clone.add(tx).unwrap();
+                pool_clone.add(&k_hash, &tx).unwrap();
             });
 
             handles.push(handle);

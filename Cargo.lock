@@ -1221,6 +1221,7 @@ version = "0.2.0"
 name = "pethit-txpool"
 version = "0.2.0"
 dependencies = [
+ "alloy-primitives",
  "pethit-execution",
 ]
 

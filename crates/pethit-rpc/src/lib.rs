@@ -37,9 +37,10 @@ async fn send_transaction(
         key: payload.key.into_bytes(),
         value: payload.value.into_bytes(),
     };
+    let k_hash = tx.hash();
 
     // Add it to the pool from the state
-    if let Err(e) = state.txpool.add(tx.clone()) {
+    if let Err(e) = state.txpool.add(&k_hash, &tx) {
         return format!("Error adding to pool: {}", e);
     }
 

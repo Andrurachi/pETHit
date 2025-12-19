@@ -1,5 +1,5 @@
-use pethit_storage::SimpleStorage;
 use alloy_primitives::{B256, keccak256};
+use pethit_storage::SimpleStorage;
 
 /// A Transaction is a request to change the state.
 /// In Iteration 1, a transaction is simply:
@@ -11,7 +11,7 @@ pub struct Transaction {
 }
 
 impl Transaction {
-    pub fn hash(self) -> B256 {
+    pub fn hash(&self) -> B256 {
         // Concatenate the tx data. TODO: concatenate with RLP
         let mut data = self.key.clone();
         data.extend(&self.value);
@@ -20,6 +20,7 @@ impl Transaction {
         keccak256(data)
     }
 }
+
 #[derive(Debug)]
 // The ExecutionEngine holds no state/data, it only holds the logic.
 pub struct ExecutionEngine;
@@ -80,11 +81,10 @@ mod tests {
             value: b"This is the value".to_vec(),
         };
 
-        let hash =tx.hash();
+        let hash = tx.hash();
         println!("Tx Hash: {}", hash);
 
         // Assert it is 32 bytes
         assert_eq!(hash.len(), 32)
-
     }
 }
