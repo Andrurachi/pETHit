@@ -7,3 +7,5 @@ edition = "2024"
 pethit-execution = { path = "../pethit-execution" }
 pethit-storage = { path = "../pethit-storage" }
 pethit-txpool = { path = "../pethit-txpool" }
+
+alloy-primitives = { workspace = true }

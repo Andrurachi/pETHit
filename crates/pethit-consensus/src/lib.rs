@@ -1,3 +1,4 @@
+use alloy_primitives::{B256, keccak256};
 use pethit_execution::{ExecutionEngine, Transaction};
 use pethit_storage::SharedStorage;
 use pethit_txpool::SharedTxPool;
@@ -7,6 +8,20 @@ use std::{thread, time::Duration};
 pub struct Block {
     pub id: u64,
     pub transactions: Vec<Transaction>,
+}
+
+impl Block {
+    pub fn hash(&self) -> B256 {
+        let mut data = Vec::new();
+        data.extend_from_slice(&self.id.to_be_bytes());
+
+        for tx in &self.transactions {
+            let tx_hash = tx.hash();
+            data.extend_from_slice(tx_hash.as_slice());
+        }
+
+        keccak256(data)
+    }
 }
 
 pub struct Miner {
