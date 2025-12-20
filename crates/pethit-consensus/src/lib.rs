@@ -8,26 +8,43 @@ use std::{thread, time::Duration};
 pub struct Block {
     pub id: u64,
     pub transactions: Vec<Transaction>,
+    pub parent_hash: B256,
 }
 
 impl Block {
     pub fn hash(&self) -> B256 {
         let mut data = Vec::new();
         data.extend_from_slice(&self.id.to_be_bytes());
+        data.extend_from_slice(self.parent_hash.as_slice());
 
         for tx in &self.transactions {
-            let tx_hash = tx.hash();
-            data.extend_from_slice(tx_hash.as_slice());
+            data.extend_from_slice(tx.hash().as_slice());
         }
 
         keccak256(data)
     }
+
+    pub fn seal(self) -> SealedBlock {
+        let hashed_block = self.hash();
+
+        SealedBlock {
+            block: self,
+            k_hash: hashed_block,
+        }
+    }
+}
+
+// Includes the block hash (removes the need to use placeholder hash and mut block)
+#[derive(Debug, Clone)]
+pub struct SealedBlock {
+    block: Block,
+    k_hash: B256,
 }
 
 pub struct Miner {
     txpool: SharedTxPool,
     storage: SharedStorage,
-    blockchain: Vec<Block>,
+    blockchain: Vec<SealedBlock>,
     block_num: u64,
 }
 
@@ -46,6 +63,16 @@ impl Miner {
     /// 'mut self' because we update 'block_num' and 'blockchain'.
     pub fn start_mining(mut self) {
         println!("Miner initialized and starting heartbeat...");
+
+        // Create genesis block
+        let genesis = Block {
+            id: self.block_num,
+            transactions: Vec::new(),
+            parent_hash: B256::ZERO,
+        }
+        .seal();
+        self.blockchain.push(genesis);
+
         loop {
             thread::sleep(Duration::from_secs(5));
             self.mine_block();
@@ -68,19 +95,22 @@ impl Miner {
 
         // Create the Block
         self.block_num += 1;
-        let block = Block {
+        let parent_block = self.blockchain.last().unwrap();
+        let sealed_block = Block {
             id: self.block_num,
             transactions: txs,
-        };
+            parent_hash: parent_block.k_hash,
+        }
+        .seal();
 
         println!(
             "Mined Block #{} with {} txs",
-            block.id,
-            block.transactions.len()
+            sealed_block.block.id,
+            sealed_block.block.transactions.len()
         );
 
         // Save to history and clear the pool
-        self.blockchain.push(block);
+        self.blockchain.push(sealed_block);
         self.txpool.clear();
     }
 }
