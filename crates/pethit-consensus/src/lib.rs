@@ -37,8 +37,15 @@ impl Block {
 // Includes the block hash (removes the need to use placeholder hash and mut block)
 #[derive(Debug, Clone)]
 pub struct SealedBlock {
-    block: Block,
-    k_hash: B256,
+    pub block: Block,
+    pub k_hash: B256,
+}
+
+impl std::ops::Deref for SealedBlock {
+    type Target = Block;
+    fn deref(&self) -> &Self::Target {
+        &self.block
+    }
 }
 
 pub struct Miner {
@@ -104,9 +111,10 @@ impl Miner {
         .seal();
 
         println!(
-            "Mined Block #{} with {} txs",
-            sealed_block.block.id,
-            sealed_block.block.transactions.len()
+            "Mined Block #{} (Hash: {}) with {} txs",
+            sealed_block.id,
+            sealed_block.k_hash,
+            sealed_block.transactions.len()
         );
 
         // Save to history and clear the pool
