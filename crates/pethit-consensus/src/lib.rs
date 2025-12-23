@@ -2,8 +2,8 @@ use alloy_primitives::{B256, keccak256};
 use pethit_execution::{ExecutionEngine, Transaction};
 use pethit_storage::SharedStorage;
 use pethit_txpool::SharedTxPool;
-use std::{thread, time::Duration};
 use std::sync::{Arc, Mutex};
+use std::{thread, time::Duration};
 
 #[derive(Debug, Clone)]
 pub struct Block {
@@ -54,16 +54,23 @@ pub struct SharedChain {
     inner: Arc<Mutex<Vec<SealedBlock>>>,
 }
 
+impl Default for SharedChain {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SharedChain {
     pub fn new() -> Self {
         // Initialize with genesis
         let genesis = Block {
-                id: 0,
-                transactions: Vec::new(),
-                parent_hash: B256::ZERO,
-            }.seal();
+            id: 0,
+            transactions: Vec::new(),
+            parent_hash: B256::ZERO,
+        }
+        .seal();
         Self {
-            inner: Arc::new(Mutex::new(vec!(genesis))),
+            inner: Arc::new(Mutex::new(vec![genesis])),
         }
     }
 
@@ -71,20 +78,19 @@ impl SharedChain {
     pub fn last_block(&self) -> SealedBlock {
         let chain = self.inner.lock().unwrap();
         chain.last().cloned().unwrap()
-    
     }
 
     // Helper to add a block (for the Miner)
-    pub fn add_block(& self, block: SealedBlock) {
+    pub fn add_block(&self, block: SealedBlock) {
         let mut chain = self.inner.lock().unwrap();
         chain.push(block);
     }
 
     // Helper to find by hash (for the RPC)
-    pub fn get_block_by_hash(&self, hash: B256) -> Option<SealedBlock>{
+    pub fn get_block_by_hash(&self, hash: B256) -> Option<SealedBlock> {
         let chain = self.inner.lock().unwrap();
         // Simple linear search is fine for now
-        chain.iter().find(|b|b.k_hash == hash).cloned()
+        chain.iter().find(|b| b.k_hash == hash).cloned()
     }
 }
 

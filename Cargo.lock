@@ -1205,7 +1205,9 @@ dependencies = [
 name = "pethit-rpc"
 version = "0.2.0"
 dependencies = [
+ "alloy-primitives",
  "axum",
+ "pethit-consensus",
  "pethit-execution",
  "pethit-storage",
  "pethit-txpool",

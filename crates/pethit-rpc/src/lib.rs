@@ -1,13 +1,16 @@
+use alloy_primitives::B256;
 use axum::{
     Json, Router,
     extract::State,
     routing::{get, post},
 };
+use pethit_consensus::SharedChain;
 use pethit_execution::Transaction;
 use pethit_storage::SharedStorage;
 use pethit_txpool::SharedTxPool;
 use serde::Deserialize;
 use std::net::SocketAddr;
+use std::str::FromStr;
 
 // Data transfer Object
 #[derive(Deserialize)]
@@ -21,10 +24,16 @@ struct GetTransactionRequest {
     key: String,
 }
 
+#[derive(Deserialize)]
+struct GetBlockRequest {
+    hash: String,
+}
+
 #[derive(Clone)]
 struct AppState {
     txpool: SharedTxPool,
     storage: SharedStorage,
+    chain: SharedChain,
 }
 
 // Handler
@@ -57,7 +66,7 @@ async fn get_transaction(
 ) -> String {
     let key = payload.key.into_bytes();
 
-    // Add it to the pool from the state
+    // Get it from the shared storage
     let value = match state.storage.get(&key) {
         Some(value) => value,
         None => {
@@ -74,15 +83,49 @@ async fn get_transaction(
     "Transaction retrieved and printed!".to_string()
 }
 
+// Handler
+// This function runs when someone hits the GET /get_block endpoint.
+async fn get_block_by_hash(
+    State(state): State<AppState>,
+    Json(payload): Json<GetBlockRequest>,
+) -> String {
+    let hash = match B256::from_str(&payload.hash) {
+        Ok(hash) => hash,
+        Err(_) => return "Invalid hash format".to_string(),
+    };
+
+    // Get it from the shared blockchain
+    let block = match state.chain.get_block_by_hash(hash) {
+        Some(block) => block,
+        None => {
+            return "Error getting block".to_string();
+        }
+    };
+
+    // Reply to the user
+    format!(
+        "Found Block!\nNumber: {}\nHash: {}\nParent: {}\nTxs: {} \n",
+        block.id,
+        block.k_hash,
+        block.parent_hash,
+        block.transactions.len()
+    )
+}
+
 // The Server Builder
-pub async fn start_server(txpool: SharedTxPool, storage: SharedStorage) {
+pub async fn start_server(txpool: SharedTxPool, storage: SharedStorage, chain: SharedChain) {
     // Create the state object
-    let state = AppState { txpool, storage };
+    let state = AppState {
+        txpool,
+        storage,
+        chain,
+    };
 
     // Build the router and inject the state
     let app = Router::new()
         .route("/send_tx", post(send_transaction))
         .route("/get_tx", get(get_transaction))
+        .route("/get_block", get(get_block_by_hash))
         .with_state(state);
 
     // Define the address
