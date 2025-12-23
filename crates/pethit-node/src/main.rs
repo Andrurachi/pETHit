@@ -1,4 +1,4 @@
-use pethit_consensus::Miner;
+use pethit_consensus::{Miner, SharedChain};
 use pethit_rpc::start_server;
 use pethit_storage::SharedStorage;
 use pethit_txpool::SharedTxPool;
@@ -10,15 +10,17 @@ async fn main() {
     // Start the shared components
     let shared_storage = SharedStorage::new();
     let shared_txpool = SharedTxPool::new();
+    let shared_chain = SharedChain::new();
 
     // Setup the Miner
     let miner_txpool = shared_storage.clone();
     let miner_storage = shared_txpool.clone();
+    let miner_chain = shared_chain.clone();
 
     // Launch the Miner in the background
     // `tokio::task::spawn_blocking` is used because the Miner uses `thread::sleep`, which shouldn't block the async executor.
     tokio::task::spawn_blocking(move || {
-        let miner = Miner::new(miner_storage, miner_txpool);
+        let miner = Miner::new(miner_storage, miner_txpool, miner_chain);
         miner.start_mining();
     });
 

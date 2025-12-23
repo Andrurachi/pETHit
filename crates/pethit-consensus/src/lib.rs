@@ -3,6 +3,7 @@ use pethit_execution::{ExecutionEngine, Transaction};
 use pethit_storage::SharedStorage;
 use pethit_txpool::SharedTxPool;
 use std::{thread, time::Duration};
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone)]
 pub struct Block {
@@ -48,20 +49,59 @@ impl std::ops::Deref for SealedBlock {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct SharedChain {
+    inner: Arc<Mutex<Vec<SealedBlock>>>,
+}
+
+impl SharedChain {
+    pub fn new() -> Self {
+        // Initialize with genesis
+        let genesis = Block {
+                id: 0,
+                transactions: Vec::new(),
+                parent_hash: B256::ZERO,
+            }.seal();
+        Self {
+            inner: Arc::new(Mutex::new(vec!(genesis))),
+        }
+    }
+
+    // Helper to get the last block (for the Miner)
+    pub fn last_block(&self) -> SealedBlock {
+        let chain = self.inner.lock().unwrap();
+        chain.last().cloned().unwrap()
+    
+    }
+
+    // Helper to add a block (for the Miner)
+    pub fn add_block(& self, block: SealedBlock) {
+        let mut chain = self.inner.lock().unwrap();
+        chain.push(block);
+    }
+
+    // Helper to find by hash (for the RPC)
+    pub fn get_block_by_hash(&self, hash: B256) -> Option<SealedBlock>{
+        let chain = self.inner.lock().unwrap();
+        // Simple linear search is fine for now
+        chain.iter().find(|b|b.k_hash == hash).cloned()
+    }
+}
+
 pub struct Miner {
     txpool: SharedTxPool,
     storage: SharedStorage,
-    blockchain: Vec<SealedBlock>,
+    chain: SharedChain,
     block_num: u64,
 }
 
 impl Miner {
     /// The Miner is initialized with existing handles to the Pool and Storage.
-    pub fn new(txpool: SharedTxPool, storage: SharedStorage) -> Self {
+    pub fn new(txpool: SharedTxPool, storage: SharedStorage, chain: SharedChain) -> Self {
         Self {
             txpool,
             storage,
-            blockchain: Vec::new(),
+            chain,
             block_num: 0,
         }
     }
@@ -71,18 +111,9 @@ impl Miner {
     pub fn start_mining(mut self) {
         println!("Miner initialized and starting heartbeat...");
 
-        // Create genesis block
-        let genesis = Block {
-            id: self.block_num,
-            transactions: Vec::new(),
-            parent_hash: B256::ZERO,
-        }
-        .seal();
-        self.blockchain.push(genesis);
-
         loop {
-            thread::sleep(Duration::from_secs(5));
             self.mine_block();
+            thread::sleep(Duration::from_secs(5));
         }
     }
 
@@ -102,7 +133,7 @@ impl Miner {
 
         // Create the Block
         self.block_num += 1;
-        let parent_block = self.blockchain.last().unwrap();
+        let parent_block = self.chain.last_block();
         let sealed_block = Block {
             id: self.block_num,
             transactions: txs,
@@ -118,7 +149,7 @@ impl Miner {
         );
 
         // Save to history and clear the pool
-        self.blockchain.push(sealed_block);
+        self.chain.add_block(sealed_block.clone());
         self.txpool.clear();
     }
 }
