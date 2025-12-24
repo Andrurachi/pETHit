@@ -10,4 +10,11 @@ members = [
 ]
 
 [workspace.dependencies]
+# Hashing
 alloy-primitives = { version = "1.5.0" }
+
+# RPC
+axum = { version = "0.8" } # Web Server Framework
+tokio = { version = "1.0" } # Async Runtime
+serde = { version = "1.0", features = ["derive"] } # JSON support
+serde_json = { version = "1.0" }
