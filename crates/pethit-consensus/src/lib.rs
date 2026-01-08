@@ -1,5 +1,5 @@
 use alloy_primitives::{B256, keccak256};
-use pethit_execution::{ExecutionEngine, Transaction};
+use pethit_execution::{ExecutionEngine, SignedTransaction};
 use pethit_storage::SharedStorage;
 use pethit_txpool::SharedTxPool;
 use std::sync::{Arc, Mutex};
@@ -8,7 +8,7 @@ use std::{thread, time::Duration};
 #[derive(Debug, Clone)]
 pub struct Block {
     pub id: u64,
-    pub transactions: Vec<Transaction>,
+    pub transactions: Vec<SignedTransaction>,
     pub parent_hash: B256,
 }
 
@@ -18,8 +18,9 @@ impl Block {
         data.extend_from_slice(&self.id.to_be_bytes());
         data.extend_from_slice(self.parent_hash.as_slice());
 
-        for tx in &self.transactions {
-            data.extend_from_slice(tx.hash().as_slice());
+        for sig_tx in &self.transactions {
+            data.extend_from_slice(sig_tx.transaction.hash().as_slice());
+            // TODO: How the signature of each transaction is included in the block?
         }
 
         keccak256(data)
@@ -125,14 +126,23 @@ impl Miner {
 
     fn mine_block(&mut self) {
         // Pull transactions from the shared pool
-        let txs = self.txpool.get_all_transactions();
+        let all_txs = self.txpool.get_all_transactions();
+        // Successful transactions
+        let mut valid_txs = Vec::new();
+
         // If there are txs, update the STATE
-        if !txs.is_empty() {
-            // .update() pattern is used to lock the DB once and run all transactions through the Engine.
-            let txs_to_execute = txs.clone();
+        if !all_txs.is_empty() {
+            // .update() pattern is used to lock the DB once and run transactions through the Engine.
             self.storage.update(|raw_db| {
-                for tx in txs_to_execute {
-                    ExecutionEngine::execute(raw_db, &tx);
+                for tx in all_txs {
+                    match ExecutionEngine::execute(raw_db, &tx) {
+                        Ok(_) => {
+                            valid_txs.push(tx);
+                        }
+                        Err(e) => {
+                            println!("Skipping invalid tx: {}", e);
+                        }
+                    };
                 }
             });
         }
@@ -142,7 +152,7 @@ impl Miner {
         let parent_block = self.chain.last_block();
         let sealed_block = Block {
             id: self.block_num,
-            transactions: txs,
+            transactions: valid_txs,
             parent_hash: parent_block.k_hash,
         }
         .seal();
