@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 alloy-primitives = { workspace = true }
+alloy-rlp = { workspace = true }

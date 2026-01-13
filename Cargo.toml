@@ -11,7 +11,7 @@ members = [
 
 [workspace.dependencies]
 # Hashing and Types
-alloy-primitives = { version = "1.5.0" }
+alloy-primitives = { version = "1.5", features = ["rlp"]}
 
 # RPC
 axum = { version = "0.8" } # Web Server Framework
@@ -22,3 +22,6 @@ serde_json = { version = "1.0" }
 # Crypto
 k256 = { version = "0.13", features = ["ecdsa"] }
 hex = { version = "0.4" }
+
+# eth
+alloy-rlp = { version = "0.3", features = ["derive"]}

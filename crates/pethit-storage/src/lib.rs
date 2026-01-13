@@ -1,11 +1,12 @@
 use alloy_primitives::{Address, U256};
+use alloy_rlp::{Decodable, Encodable, RlpDecodable, RlpEncodable};
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
 };
 
 /// Represents a single user's state.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, RlpEncodable, RlpDecodable)]
 pub struct Account {
     pub nonce: u64,
     pub balance: U256,
@@ -14,7 +15,7 @@ pub struct Account {
 /// This struct holds the information of all accounts
 #[derive(Debug, Default)]
 pub struct SimpleStorage {
-    pub accounts: HashMap<Address, Account>,
+    pub accounts: HashMap<Vec<u8>, Vec<u8>>,
 }
 
 impl SimpleStorage {
@@ -26,12 +27,24 @@ impl SimpleStorage {
 
     /// Helper to update an account
     pub fn set_account(&mut self, addr: Address, account: Account) {
-        self.accounts.insert(addr, account);
+        let key_bytes = addr.to_vec();
+        // Account to RLP
+        let mut value_bytes = Vec::new();
+        account.encode(&mut value_bytes);
+        self.accounts.insert(key_bytes, value_bytes);
     }
 
     /// Helper to get an account info
     pub fn get_account(&self, addr: &Address) -> Account {
-        self.accounts.get(addr).cloned().unwrap_or_default()
+        let key_bytes = addr.as_slice();
+
+        match self.accounts.get(key_bytes) {
+            Some(bytes) => {
+                // RLP to Account
+                Account::decode(&mut bytes.as_slice()).unwrap_or_default()
+            }
+            None => Account::default(),
+        }
     }
 }
 

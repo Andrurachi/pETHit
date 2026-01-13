@@ -103,6 +103,7 @@ async fn send_transaction(
 
 // TODO: Refactor get_tx so it is searched in the chain, not in the storage.
 // Probably will require a new block method to return a tx given the hash. Is there a fast way to get a tx?
+// Probably this will be implemented in iteration 4 after the block history is part of the db, not some random chain variable
 
 // // Handler
 // // This function runs when someone hits the GET /get_tx endpoint.

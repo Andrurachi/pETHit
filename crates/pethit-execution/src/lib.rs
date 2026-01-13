@@ -17,7 +17,7 @@ pub struct Transaction {
 impl Transaction {
     /// Hashes the transaction fields.
     pub fn hash(&self) -> B256 {
-        // Concatenate the tx data. TODO: concatenate with RLP
+        // Concatenate the tx data. TODO: concatenate with RLP (hash will be different if wallet signs the RLP)
         let mut data = Vec::new();
         data.extend_from_slice(self.to.as_slice());
         data.extend_from_slice(&self.value.to_be_bytes::<32>());
