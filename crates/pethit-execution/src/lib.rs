@@ -35,6 +35,20 @@ pub struct SignedTransaction {
 }
 
 impl SignedTransaction {
+    // Hash transaction including the signature and recovery id.
+    pub fn hash(&self) -> B256 {
+        // TODO: In iteration 4, since chain is going to be stored in db, we will need RLP.
+        let mut data = Vec::new();
+        // Add the inner tx hash (to, value, nonce)
+        data.extend_from_slice(self.transaction.hash().as_slice()); 
+        // Add the signature.
+        data.extend_from_slice(&self.signature.to_bytes());
+        // Add the recovery id
+        data.extend_from_slice(&[self.recovery_id.to_byte()]);
+        // Hash it
+        keccak256(data)
+    }
+    
     // Recovers the Address of the signer.
     pub fn recover_sender(&self) -> Result<Address, String> {
         let tx_hash = self.transaction.hash();

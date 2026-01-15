@@ -20,12 +20,7 @@ impl Block {
 
         for sig_tx in &self.transactions {
             // Add the transaction hash.
-            data.extend_from_slice(sig_tx.transaction.hash().as_slice());
-            // Add the signature.
-            data.extend_from_slice(&sig_tx.signature.to_bytes());
-            // Add the recovery id
-            data.extend_from_slice(&[sig_tx.recovery_id.to_byte()]);
-            // TODO: In iteration 4, since chain is going to be stored in db, we will need RLP.
+            data.extend_from_slice(sig_tx.hash().as_slice());
         }
 
         keccak256(data)
