@@ -1,10 +1,11 @@
 use alloy_primitives::{Address, B256, U256, keccak256};
+use alloy_rlp::{RlpDecodable, RlpEncodable};
 use k256::ecdsa::{RecoveryId, Signature, VerifyingKey};
 use pethit_storage::SimpleStorage;
 
 /// The "Raw" transaction (The Message).
 /// Data to sign.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, RlpEncodable, RlpDecodable)]
 pub struct Transaction {
     /// The destination address
     pub to: Address,
@@ -15,16 +16,12 @@ pub struct Transaction {
 }
 
 impl Transaction {
-    /// Hashes the transaction fields.
+    /// Hashes the transaction fields using RLP.
     pub fn hash(&self) -> B256 {
-        // Concatenate the tx data. TODO: concatenate with RLP (hash will be different if wallet signs the RLP)
-        let mut data = Vec::new();
-        data.extend_from_slice(self.to.as_slice());
-        data.extend_from_slice(&self.value.to_be_bytes::<32>());
-        data.extend_from_slice(&self.nonce.to_be_bytes());
-
-        // Hash the data with keccak256.
-        keccak256(data)
+        // Encode with RLP.
+        let data_encode = alloy_rlp::encode(self);
+        // Hash the RLP data with keccak256.
+        keccak256(data_encode)
     }
 }
 

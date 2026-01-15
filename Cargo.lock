@@ -1186,6 +1186,7 @@ name = "pethit-execution"
 version = "0.3.0"
 dependencies = [
  "alloy-primitives",
+ "alloy-rlp",
  "k256",
  "pethit-storage",
 ]

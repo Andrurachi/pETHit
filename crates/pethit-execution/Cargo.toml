@@ -6,4 +6,6 @@ edition = "2024"
 [dependencies]
 alloy-primitives = { workspace = true }
 k256 = { workspace = true }
+alloy-rlp = { workspace = true }
+
 pethit-storage = { path = "../pethit-storage" }
