@@ -1,25 +1,21 @@
-use alloy_primitives::{Address, B256, U256};
+use alloy_primitives::B256;
+use alloy_rlp::Decodable;
 use axum::{
     Json, Router,
     extract::State,
     routing::{get, post},
 };
-use k256::ecdsa::{RecoveryId, Signature};
 use pethit_consensus::SharedChain;
-use pethit_execution::{SignedTransaction, Transaction};
+use pethit_execution::SignedTransaction;
 use pethit_txpool::SharedTxPool;
 use serde::Deserialize;
 use std::net::SocketAddr;
 use std::str::FromStr;
 
-// Data transfer Object (simple types are used (String, u8) that are guaranteed to work with Serde.)
+// Raw hex the wallet sends
 #[derive(Deserialize)]
 struct PutTransactionRequest {
-    to: String,
-    value: String,
-    nonce: u64,
-    signature: String,
-    recovery_id: u8,
+    pub raw_tx: String,
 }
 
 // #[derive(Deserialize)]
@@ -44,67 +40,37 @@ async fn send_transaction(
     State(state): State<AppState>,
     Json(payload): Json<PutTransactionRequest>,
 ) -> String {
-    // Parse payload address
-    let to_address = match Address::from_str(&payload.to) {
-        Ok(addr) => addr,
-        Err(_) => return "Invalid 'to' address format".to_string(),
-    };
+    // Strip "0x" and Decode Hex
+    let hex_data = payload.raw_tx.strip_prefix("0x").unwrap_or(&payload.raw_tx);
 
-    // Parse payload value
-    let val = match U256::from_str(&payload.value) {
-        Ok(v) => v,
-        Err(_) => return "Invalid 'value' format".to_string(),
-    };
-
-    // Parse payload signature
-    // Strip the "0x" prefix if it exists
-    let sig_hex = payload
-        .signature
-        .strip_prefix("0x")
-        .unwrap_or(&payload.signature);
-    let sig_bytes = match hex::decode(sig_hex) {
+    let rlp_bytes = match hex::decode(hex_data) {
         Ok(b) => b,
-        Err(_) => return "Invalid signature hex".to_string(),
-    };
-    let signature = match Signature::try_from(sig_bytes.as_slice()) {
-        Ok(s) => s,
-        Err(_) => return "Invalid signature bytes".to_string(),
+        Err(_) => return "Error: Invalid Hex string".to_string(),
     };
 
-    // Parse payload Recovery ID
-    let rec_id = match RecoveryId::try_from(payload.recovery_id) {
-        Ok(rec) => rec,
-        Err(_) => return "Invalid 'Recovery ID' format".to_string(),
+    // Decode RLP to SignedTransaction
+    let sig_tx = match SignedTransaction::decode(&mut rlp_bytes.as_slice()) {
+        Ok(tx) => tx,
+        Err(e) => return format!("Error decoding RLP: {}", e),
     };
 
-    let tx = Transaction {
-        to: to_address,
-        value: val,
-        nonce: payload.nonce,
-    };
+    // Calculate hash and add to the pool
+    let tx_hash = alloy_primitives::keccak256(&rlp_bytes);
 
-    let sig_tx = SignedTransaction {
-        transaction: tx.clone(),
-        signature,
-        recovery_id: rec_id,
-    };
-
-    let k_hash = tx.hash();
-
-    // Add it to the pool from the state
-    if let Err(e) = state.txpool.add(k_hash, sig_tx) {
-        return format!("Error adding to pool: {}", e);
+    if let Err(e) = state.txpool.add(tx_hash, sig_tx) {
+        return format!("Error adding to the pool: {}", e);
     }
 
     // Reply to the user
-    println!("\n Added to pool tx with hash={:?}", k_hash);
-    "Transaction received and printed!".to_string()
+    println!("\n Added to pool tx with hash={:?}", tx_hash);
+    "Transaction received!".to_string()
 }
+
+// TODO: Implement get_account by address
 
 // TODO: Refactor get_tx so it is searched in the chain, not in the storage.
 // Probably will require a new block method to return a tx given the hash. Is there a fast way to get a tx?
 // Probably this will be implemented in iteration 4 after the block history is part of the db, not some random chain variable
-
 // // Handler
 // // This function runs when someone hits the GET /get_tx endpoint.
 // async fn get_transaction(

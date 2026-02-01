@@ -1,5 +1,5 @@
 use alloy_primitives::{Address, B256, U256, keccak256};
-use alloy_rlp::{RlpDecodable, RlpEncodable};
+use alloy_rlp::{BufMut, Decodable, Encodable, Error, Header, RlpDecodable, RlpEncodable};
 use k256::ecdsa::{RecoveryId, Signature, VerifyingKey};
 use pethit_storage::SimpleStorage;
 
@@ -34,13 +34,59 @@ pub struct SignedTransaction {
     pub recovery_id: RecoveryId, // The "V" value (needed to recover the public key fast)
 }
 
+impl Encodable for SignedTransaction {
+    fn encode(&self, out: &mut dyn BufMut) {
+        // Payload length = sum of encoded field lengths
+        let payload_len =
+            self.transaction.length() + self.signature.to_bytes().length() + 1usize.length(); // u8
+
+        // Write list header
+        Header {
+            list: true,
+            payload_length: payload_len,
+        }
+        .encode(out);
+
+        // Encode fields in order
+        self.transaction.encode(out);
+        self.signature.to_bytes().encode(out);
+        self.recovery_id.to_byte().encode(out);
+    }
+}
+
+impl Decodable for SignedTransaction {
+    fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
+        let header = Header::decode(buf)?;
+
+        if !header.list {
+            return Err(Error::Custom("SignedTransaction must be an RLP list"));
+        }
+
+        let transaction = Transaction::decode(buf)?;
+        let sig_bytes = Vec::<u8>::decode(buf)?;
+        let recid_byte = u8::decode(buf)?;
+
+        let signature = Signature::from_slice(&sig_bytes)
+            .map_err(|_| Error::Custom("Invalid signature bytes"))?;
+
+        let recovery_id =
+            RecoveryId::from_byte(recid_byte).ok_or(Error::Custom("Invalid recovery id"))?;
+
+        Ok(Self {
+            transaction,
+            signature,
+            recovery_id,
+        })
+    }
+}
+
 impl SignedTransaction {
     // Hash transaction including the signature and recovery id.
     pub fn hash(&self) -> B256 {
         // TODO: In iteration 4, since chain is going to be stored in db, we will need RLP.
         let mut data = Vec::new();
         // Add the inner tx hash (to, value, nonce)
-        data.extend_from_slice(self.transaction.hash().as_slice()); 
+        data.extend_from_slice(self.transaction.hash().as_slice());
         // Add the signature.
         data.extend_from_slice(&self.signature.to_bytes());
         // Add the recovery id
@@ -48,7 +94,7 @@ impl SignedTransaction {
         // Hash it
         keccak256(data)
     }
-    
+
     // Recovers the Address of the signer.
     pub fn recover_sender(&self) -> Result<Address, String> {
         let tx_hash = self.transaction.hash();

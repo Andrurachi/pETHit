@@ -6,18 +6,13 @@ members = [
     "crates/pethit-execution",
     "crates/pethit-rpc",
     "crates/pethit-txpool", 
-    "crates/pethit-consensus",
+    "crates/pethit-consensus", 
+    "crates/pethit-wallet",
 ]
 
 [workspace.dependencies]
 # Hashing and Types
 alloy-primitives = { version = "1.5", features = ["rlp"]}
-
-# RPC
-axum = { version = "0.8" } # Web Server Framework
-tokio = { version = "1.0" } # Async Runtime
-serde = { version = "1.0", features = ["derive"] } # JSON support
-serde_json = { version = "1.0" }
 
 # Crypto
 k256 = { version = "0.13", features = ["ecdsa"] }
@@ -25,3 +20,13 @@ hex = { version = "0.4" }
 
 # eth
 alloy-rlp = { version = "0.3", features = ["derive"]}
+
+# Async & Networking
+axum = { version = "0.8" } # Web Server Framework
+tokio = { version = "1.0" } # Async Runtime
+serde = { version = "1.0", features = ["derive"] } # JSON support
+serde_json = { version = "1.0" }
+reqwest = { version = "0.13", features = ["json"] }
+
+# CLI Parsing for Wallet
+clap = { version = "4.5", features = ["derive"] }

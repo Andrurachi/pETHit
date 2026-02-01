@@ -11,6 +11,7 @@ serde_json = { workspace = true }
 alloy-primitives = { workspace = true }
 k256 = { workspace = true }
 hex = { workspace = true }
+alloy-rlp = { workspace = true }
 
 # Internal types
 pethit-execution = { path = "../pethit-execution" }

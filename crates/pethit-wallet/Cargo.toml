@@ -1,0 +1,19 @@
+[package]
+name = "pethit-wallet"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { workspace = true }
+
+tokio = { workspace = true, features = ["full"] }
+reqwest = { workspace = true }
+
+serde_json = { workspace = true }
+hex = { workspace = true }
+
+k256 = { workspace = true }
+alloy-primitives = { workspace = true }
+alloy-rlp = { workspace = true }
+
+pethit-execution = { path = "../pethit-execution" }
