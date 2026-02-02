@@ -1,4 +1,4 @@
-use alloy_primitives::B256;
+use alloy_primitives::{Address, B256};
 use alloy_rlp::Decodable;
 use axum::{
     Json, Router,
@@ -7,15 +7,29 @@ use axum::{
 };
 use pethit_consensus::SharedChain;
 use pethit_execution::SignedTransaction;
+use pethit_storage::SharedStorage;
 use pethit_txpool::SharedTxPool;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::str::FromStr;
 
-// Raw hex the wallet sends
+// Raw tx hex the wallet sends
 #[derive(Deserialize)]
 struct PutTransactionRequest {
     pub raw_tx: String,
+}
+
+// Raw address hex the wallet sends
+#[derive(Deserialize)]
+struct GetAccountRequest {
+    pub raw_acc: String,
+}
+
+#[derive(Serialize)]
+pub struct AccountResponse {
+    pub address: String,
+    pub nonce: u64,
+    pub balance: String,
 }
 
 // #[derive(Deserialize)]
@@ -30,12 +44,12 @@ struct GetBlockRequest {
 
 #[derive(Clone)]
 struct AppState {
+    storage: SharedStorage,
     txpool: SharedTxPool,
     chain: SharedChain,
 }
 
-// Handler
-// This function runs when someone hits the POST /send_tx endpoint.
+// Handler for POST /send_tx endpoint.
 async fn send_transaction(
     State(state): State<AppState>,
     Json(payload): Json<PutTransactionRequest>,
@@ -66,7 +80,24 @@ async fn send_transaction(
     "Transaction received!".to_string()
 }
 
-// TODO: Implement get_account by address
+// Handler for POST /get_account
+async fn get_account_by_address(
+    State(state): State<AppState>,
+    Json(payload): Json<GetAccountRequest>,
+) -> Json<AccountResponse> {
+    // Decode address
+    let address = Address::from_str(&payload.raw_acc).unwrap_or(Address::ZERO);
+
+    //Get account from storage
+    let account = state.storage.get_account(address);
+
+    // Return JSON
+    Json(AccountResponse {
+        address: payload.raw_acc,
+        nonce: account.nonce,
+        balance: account.balance.to_string(),
+    })
+}
 
 // TODO: Refactor get_tx so it is searched in the chain, not in the storage.
 // Probably will require a new block method to return a tx given the hash. Is there a fast way to get a tx?
@@ -96,8 +127,7 @@ async fn send_transaction(
 //     "Transaction retrieved and printed!".to_string()
 // }
 
-// Handler
-// This function runs when someone hits the GET /get_block endpoint.
+// Handler for GET /get_block
 async fn get_block_by_hash(
     State(state): State<AppState>,
     Json(payload): Json<GetBlockRequest>,
@@ -126,14 +156,19 @@ async fn get_block_by_hash(
 }
 
 // The Server Builder
-pub async fn start_server(txpool: SharedTxPool, chain: SharedChain) {
+pub async fn start_server(storage: SharedStorage, txpool: SharedTxPool, chain: SharedChain) {
     // Create the state object
-    let state = AppState { txpool, chain };
+    let state = AppState {
+        storage,
+        txpool,
+        chain,
+    };
 
     // Build the router and inject the state
     let app = Router::new()
         .route("/send_tx", post(send_transaction))
         //.route("/get_tx", get(get_transaction))
+        .route("/get_account", get(get_account_by_address))
         .route("/get_block", get(get_block_by_hash))
         .with_state(state);
 

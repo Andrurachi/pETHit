@@ -135,7 +135,21 @@ async fn send_transaction(
 }
 
 // Helper to fetch nonce
-async fn fetch_nonce(_rpc_url: &str, _address: Address) -> Result<u64, Box<dyn std::error::Error>> {
-    // TODO: Implement actual RPC call here
-    Ok(0)
+async fn fetch_nonce(rpc_url: &str, address: Address) -> Result<u64, Box<dyn std::error::Error>> {
+    let client = reqwest::Client::new();
+    let url = format!("{}/get_account", rpc_url);
+
+    let response = client
+        .post(&url)
+        .header("content-type", "application/json")
+        .json(&serde_json::json!({
+            "address": address.to_string()
+        }))
+        .send()
+        .await?;
+
+    let account_info: serde_json::Value = response.json().await?;
+    let nonce = account_info["nonce"].as_u64().unwrap_or(0);
+
+    Ok(nonce)
 }
