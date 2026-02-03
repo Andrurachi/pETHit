@@ -29,7 +29,7 @@ enum Commands {
         #[arg(long)]
         value: u64,
         /// RPC URL
-        #[arg(long, default_value = "http://127.0.0.1:8000")]
+        #[arg(long, default_value = "http://127.0.0.1:3000")]
         rpc: String,
     },
 }

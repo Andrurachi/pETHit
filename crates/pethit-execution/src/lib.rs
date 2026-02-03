@@ -36,37 +36,75 @@ pub struct SignedTransaction {
 
 impl Encodable for SignedTransaction {
     fn encode(&self, out: &mut dyn BufMut) {
-        // Payload length = sum of encoded field lengths
-        let payload_len =
-            self.transaction.length() + self.signature.to_bytes().length() + 1usize.length(); // u8
+        let sig_bytes = self.signature.to_bytes();
+        let sig_slice = &sig_bytes[..]; // Force Signature to be a Slice
 
-        // Write list header
+        let recid_byte = self.recovery_id.to_byte();
+
+        // Calculate Payload Length
+        let payload_len = self.transaction.length() + sig_slice.length() + recid_byte.length();
+
+        // Write List Header
         Header {
             list: true,
             payload_length: payload_len,
         }
         .encode(out);
 
-        // Encode fields in order
+        // Encode each field in order
         self.transaction.encode(out);
-        self.signature.to_bytes().encode(out);
-        self.recovery_id.to_byte().encode(out);
+        sig_slice.encode(out); //Encode the slice, not the GenericArray
+        recid_byte.encode(out);
+    }
+
+    // Lenght after RLP encoding of SignedTransaction
+    fn length(&self) -> usize {
+        let sig_bytes = self.signature.to_bytes();
+        let sig_slice = &sig_bytes[..];
+        let recid_byte = self.recovery_id.to_byte();
+
+        let payload_len = self.transaction.length() + sig_slice.length() + recid_byte.length();
+
+        Header {
+            list: true,
+            payload_length: payload_len,
+        }
+        .length()
+            + payload_len
     }
 }
 
 impl Decodable for SignedTransaction {
     fn decode(buf: &mut &[u8]) -> alloy_rlp::Result<Self> {
+        // Decode Main Header (The wrapper list)
         let header = Header::decode(buf)?;
-
         if !header.list {
             return Err(Error::Custom("SignedTransaction must be an RLP list"));
         }
 
+        // Decode Transaction (Inner list)
         let transaction = Transaction::decode(buf)?;
-        let sig_bytes = Vec::<u8>::decode(buf)?;
+
+        // Decode Signature (Manually as Bytes) to avoid Vec<u8> ambiguity
+        let sig_head = Header::decode(buf)?;
+        if sig_head.list {
+            return Err(Error::Custom("Signature must be an RLP string, found list"));
+        }
+
+        let sig_len = sig_head.payload_length;
+        if buf.len() < sig_len {
+            return Err(Error::InputTooShort);
+        }
+
+        // Read the bytes and advance the buffer
+        let sig_bytes = &buf[..sig_len];
+        *buf = &buf[sig_len..];
+
+        // Decode Recovery ID
         let recid_byte = u8::decode(buf)?;
 
-        let signature = Signature::from_slice(&sig_bytes)
+        // Convert to Crypto Types
+        let signature = Signature::from_slice(sig_bytes)
             .map_err(|_| Error::Custom("Invalid signature bytes"))?;
 
         let recovery_id =
