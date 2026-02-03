@@ -119,18 +119,13 @@ impl Decodable for SignedTransaction {
 }
 
 impl SignedTransaction {
-    // Hash transaction including the signature and recovery id.
+    /// Calculate the transaction hash (Keccak256 of the RLP encoding)
     pub fn hash(&self) -> B256 {
-        // TODO: In iteration 4, since chain is going to be stored in db, we will need RLP.
-        let mut data = Vec::new();
-        // Add the inner tx hash (to, value, nonce)
-        data.extend_from_slice(self.transaction.hash().as_slice());
-        // Add the signature.
-        data.extend_from_slice(&self.signature.to_bytes());
-        // Add the recovery id
-        data.extend_from_slice(&[self.recovery_id.to_byte()]);
+        // Encode self to RLP
+        let mut out = Vec::new();
+        self.encode(&mut out);
         // Hash it
-        keccak256(data)
+        keccak256(&out)
     }
 
     // Recovers the Address of the signer.
