@@ -90,39 +90,41 @@ impl SharedStorage {
     }
 }
 
-// TODO: Update tests with the new storage.
-// // Tests
-// #[cfg(test)]
-// mod tests {
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use alloy_primitives::{Address, U256};
 
-//     use super::*;
+    #[test]
+    fn it_puts_and_gets_account() {
+        let storage = SharedStorage::new();
 
-//     #[test]
-//     fn it_puts_and_gets() {
-//         // Create an instance of SimpleStorage
-//         let storage = SharedStorage::new();
+        let addr = Address::ZERO;
+        let account = Account {
+            nonce: 5,
+            balance: U256::from(100),
+        };
 
-//         // Create a kv sample in vec<u8>
-//         let key1 = b"This is the key".to_vec();
-//         let value1 = b"some value for the key".to_vec();
+        // Put
+        storage.set_account(addr, account.clone());
 
-//         // Put a new kv int our storage
-//         storage.put(key1.clone(), value1.clone());
+        // Get
+        let retrieved = storage.get_account(addr);
 
-//         // Get a value stored given the key
-//         let retrieved_value = storage.get(&key1);
+        // Check
+        assert_eq!(retrieved.nonce, 5);
+        assert_eq!(retrieved.balance, U256::from(100));
+    }
 
-//         // Assert that the returned value is the same as the original value
-//         assert_eq!(retrieved_value, Some(value1));
-//     }
+    #[test]
+    fn it_returns_default_for_missing_key() {
+        let storage = SharedStorage::new();
+        let addr = Address::ZERO;
 
-//     #[test]
-//     fn it_returns_none_for_missing_key() {
-//         let storage = SimpleStorage::new();
-//         let key_missing = b"missing_key".to_vec();
+        let retrieved = storage.get_account(addr);
 
-//         let retrieved_value = storage.get(&key_missing);
-
-//         assert_eq!(retrieved_value, None);
-//     }
-// }
+        // Should be nonce 0, balance 0
+        assert_eq!(retrieved.nonce, 0);
+        assert_eq!(retrieved.balance, U256::from(0));
+    }
+}
