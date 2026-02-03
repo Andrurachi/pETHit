@@ -81,99 +81,98 @@ impl SharedTxPool {
     }
 }
 
-// TODO: Tests need a refactor since Transaction is not what it used to be
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use alloy_primitives::{Address, U256};
-//     use pethit_execution::Transaction;
-//     use k256::ecdsa::SigningKey;
-//     use std::thread;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use alloy_primitives::{Address, U256};
+    use k256::ecdsa::SigningKey;
+    use k256::elliptic_curve::rand_core::OsRng;
+    use pethit_execution::{SignedTransaction, Transaction};
+    use std::thread;
 
-//     // Helper to create a dummy signed transaction
-//     fn create_dummy_signed_tx(nonce: u64) -> SignedTransaction {
-//         // Private key (32 ones)
-//         let raw_key = [1u8; 32];
-//         let signing_key = SigningKey::from_bytes(&raw_key.into()).unwrap();
+    // Helper to generate a valid SignedTransaction for testing
+    fn mock_tx(nonce: u64) -> SignedTransaction {
+        // Generate random key
+        let signing_key = SigningKey::random(&mut OsRng);
 
-//         // The raw tx
-//         let tx = Transaction {
-//             to: Address::ZERO,
-//             value: U256::from(100),
-//             nonce, // Ensures unique hash
-//         };
+        // Create Tx
+        let tx = Transaction {
+            to: Address::ZERO,
+            value: U256::from(100),
+            nonce,
+        };
 
-//         // Sign it
-//         SignedTransaction::create(tx, &signing_key)
-//     }
+        // Sign it
+        let (signature, recid) = signing_key
+            .sign_prehash_recoverable(tx.hash().as_slice())
+            .unwrap();
 
-//     #[test]
-//     fn test_add_transaction() {
-//         let pool = SharedTxPool::new();
-//         let tx = Transaction {
-//             to: Address::new("Alice".to_vec()),
-//             value: b"value".to_vec(),
-//         };
-//         let k_hash = tx.hash();
+        SignedTransaction {
+            transaction: tx,
+            signature,
+            recovery_id: recid,
+        }
+    }
 
-//         // Add it
-//         pool.add(&k_hash, &tx).unwrap();
+    #[test]
+    fn test_add_transaction() {
+        let pool = SharedTxPool::new();
+        let tx = mock_tx(1);
+        let tx_hash = tx.hash();
 
-//         // Check it exists
-//         let all_txs = pool.get_all_transactions();
-//         assert_eq!(all_txs.len(), 1);
-//         assert_eq!(all_txs[0], tx);
-//     }
+        // Add
+        pool.add(tx_hash, tx.clone()).unwrap();
 
-//     #[test]
-//     fn test_deduplication() {
-//         let pool = SharedTxPool::new();
-//         let tx = Transaction {
-//             key: b"same".to_vec(),
-//             value: b"same".to_vec(),
-//         };
-//         let k_hash = tx.hash();
+        // Check
+        let all = pool.get_all_transactions();
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0], tx);
+    }
 
-//         // Add the exact same tx twice
-//         pool.add(&k_hash, &tx).unwrap();
-//         pool.add(&k_hash, &tx).unwrap();
+    #[test]
+    fn test_deduplication() {
+        let pool = SharedTxPool::new();
+        let tx = mock_tx(1); // Same nonce, same data
+        let tx_hash = tx.hash();
 
-//         // Should only have 1 in storage
-//         let all_txs = pool.get_all_transactions();
-//         assert_eq!(all_txs.len(), 1);
-//     }
+        // Add twice
+        pool.add(tx_hash, tx.clone()).unwrap();
+        pool.add(tx_hash, tx.clone()).unwrap();
 
-//     #[test]
-//     fn test_concurrency_multiple_threads() {
-//         let pool = SharedTxPool::new();
-//         let mut handles = vec![];
+        // Should only be 1
+        let all = pool.get_all_transactions();
+        assert_eq!(all.len(), 1);
+    }
 
-//         // Spawn 10 threads
-//         for i in 0..10 {
-//             // Clone the "handle" to the pool for this thread
-//             let pool_clone = pool.clone();
+    #[test]
+    fn test_concurrency_multiple_threads() {
+        let pool = SharedTxPool::new();
+        let mut handles = vec![];
 
-//             let handle = thread::spawn(move || {
-//                 // Create a unique tx (based on index)
-//                 let tx = Transaction {
-//                     key: format!("key_{}", i).into_bytes(),
-//                     value: b"val".to_vec(),
-//                 };
-//                 let k_hash = tx.hash();
+        // Spawn 10 threads
+        for i in 0..10 {
+            // Clone the "handle" to the pool for this thread
+            let pool_clone = pool.clone();
 
-//                 pool_clone.add(&k_hash, &tx).unwrap();
-//             });
+            let handle = thread::spawn(move || {
+                // Create a unique tx (based on index 'i' as nonce)
+                let tx = mock_tx(i as u64);
+                let k_hash = tx.hash();
 
-//             handles.push(handle);
-//         }
+                // Add to pool
+                pool_clone.add(k_hash, tx).unwrap();
+            });
 
-//         // Wait for all threads to finish
-//         for handle in handles {
-//             handle.join().unwrap();
-//         }
+            handles.push(handle);
+        }
 
-//         // If locking works, we should have exactly 10 transactions.
-//         let all_txs = pool.get_all_transactions();
-//         assert_eq!(all_txs.len(), 10);
-//     }
-// }
+        // Wait for all threads to finish
+        for handle in handles {
+            handle.join().unwrap();
+        }
+
+        // If locking works, there should be exactly 10 transactions.
+        let all_txs = pool.get_all_transactions();
+        assert_eq!(all_txs.len(), 10);
+    }
+}
