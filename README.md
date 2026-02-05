@@ -1,9 +1,11 @@
 pETHit: A Simplified Ethereum Implementation
 ===
 
-This project is going to be developed in iterations in which we start with the simplest version of Ethereum, iterate to a better one with more complex components, then select my favorite subsystem and make a robust version of the selected one. 
+This contains my design notes, research, and implementation details for `pETHit`.
 
-This project other than just learning the Ethereum Protocol in depth and improving my Rust skills will work as a layout for future proposal experiments to the Protocol.
+This project is going to be developed in iterations in which we start with the simplest version of Ethereum, iterate to a better one with more complex components. 
+
+This project is intended for learning the Ethereum Protocol in depth, selecting my favorite subsystem and improving my Rust skills.
 
 ## Project Components
 
@@ -13,6 +15,7 @@ This project other than just learning the Ethereum Protocol in depth and improvi
 - [TxPool](https://hackmd.io/@Wre4AEjBTny7MFhlY4ci4g/H1VGfMS-be)
 - [consensus](/gVExmqs6S3iyeiV3UYTqGw)
 - [Node](https://hackmd.io/@Andrurachi/SyCzyUMXZe)
+- [Wallet](https://hackmd.io/@Andrurachi/ByYvm-bP-g)
 
 ---
 
@@ -20,16 +23,10 @@ This project other than just learning the Ethereum Protocol in depth and improvi
 We make the first version of each one extremely simple. As we should haha.
 
 - **Storage**: A simple key-value database. (We can ignore the complex Trie for now).
-
-- **Execution**: A simple "state transition function" that defines a Transaction and a State. The function just takes a state and a tx and produces a new_state (e.g., just debiting and crediting balances).
-
+- **Execution**: A simple "state transition function" that defines a Transaction and a State. The function just takes a state and a tx and produces a new_state.
 - **RPC API**: A tiny web server that can accept a "send transaction" command.
-
 - **Transaction Pool**: A simple in-memory list that holds transactions received from the RPC.
-
 - **Consensus**: A simple "miner" that runs in a loop. Every 5 seconds, it grabs transactions from the TxPool, runs them through the Execution function, creates a Block, and saves it to Storage. (Proof-of-Authority).
-
-
 - **Node:** Integration of previous subsystems.
 
 ---
@@ -43,11 +40,11 @@ Currently, all the blocks are separated items. In this iteration, hashing is goi
 
 **Data Structure Changes:**
 
-* **Block Header:** A block is no longer just "transactions". It needs metadata to verify its place in history.
-* **`number` (u64):** The height (1, 2, 3...).
+* **Block:** A block is no longer just "transactions". It needs metadata to verify its place in history.
+* **`id` (u64):** The height (1, 2, 3...).
+* **`transactions` (`Vec<Transaction>`):** A vector with all transactions in this block.
 * **`parent_hash` (B256):** The fingerprint of the previous block.
-* **`transactions_hash` (B256):** A fingerprint of all transactions in this block combined. (IN the future this will become the Merkle Root).
-* **`hash` (B256):** The fingerprint of this block (computed from the fields above).
+* **`k_hash` (B256):** The fingerprint of this block (computed from the fields above). A `SealedBlock` is composed by a block and its k_hash
 
 
 
@@ -57,7 +54,7 @@ Currently, all the blocks are separated items. In this iteration, hashing is goi
 
 * **Step 1:** Fetch transactions.
 * **Step 2:** Look at the **Last Block** in history to get its `hash`.
-* **Step 3:** Create the new block, setting `parent_hash` = `last_block.hash`.
+* **Step 3:** Create the new block, setting `parent_hash` = `last_block.k_hash`.
 * **Step 4:** "Seal" the block by calculating its own unique `hash`.
 
 **B. The Genesis Block:**
@@ -69,27 +66,18 @@ Currently, all the blocks are separated items. In this iteration, hashing is goi
 
 ## The Third Iteration Plan (v0.3.0): The Identity Update
 
+The goal of this iteration is to introduce **Cryptography** and **Identity**. This way the system moves from "Anyone can write anything" to "You can only spend what you own."
 
-### 1. The Account
+### Key Features
+1.  **Cryptography (ECDSA):** `k256` was integrated  to handle Elliptic Curve Digital Signature Algorithm (secp256k1).
+2.  **Wallet CLI:** A separate binary (`pethit-wallet`) that acts as a client. It generates private keys, signs transactions locally, and broadcasts them to the node.
+3.  **Serialization (RLP):** Recursive Length Prefix (RLP) encoding was implemented. This allows complex structs to be turned into bytes for network transport, hashing and storing.
+4.  **Stateful Accounts:** The storage no longer holds arbitrary strings. It now holds `Account` structs (`nonce` and `balance`) associated with an address.
+5.  **Replay Protection:** `nonce` was introduced to prevent the same transaction from being executed twice.
 
-A random string like "project 1" won't be the key of transactions anymore. Now Ethereum Addresses will be used as keys in SimpleStorage.
-
-### 2. The New Transaction Struct
-
-The transaction struct needs to prove three things:
-
-- **Who:** The sender (Address).
-- **What:** The key and value.
-- **Authorization:** The signature (a 65-byte array).
-
-### 3. The Library: k256
-
-To do this the industry way, k256 crate (used by Alloy and Reth) will be used. This crate handles the secp256k1 elliptic curve, which is the heart of Ethereum (and even Bitcoin).
-
-### 4. The Logic Change (The Validation Step)
-
-Currently the ExecutionEngine is a blind worker. It just does what it's told. In v0.3.0, the Engine will have a new rule:
-
-"Before I save this value to the database, I will recover the public key ?from the signature. If the recovered address does not match the sender field, I will reject the transaction."
+### The New Flow
+1.  **Wallet:** Generates a key pair -> Queries Node for Nonce -> Signs Tx (RLP + Hash) -> Sends to Node.
+2.  **RPC:** Receives Hex -> Decodes RLP -> Verifies Signature -> Adds to Pool.
+3.  **Miner:** Picks Tx -> Executes -> Updates Global State (Balances/Nonces).
 
 ---
