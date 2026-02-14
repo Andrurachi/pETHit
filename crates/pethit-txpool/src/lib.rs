@@ -8,8 +8,7 @@ pub type PoolError = String;
 
 /// This doesn't know about threads, just data.
 struct TxPool {
-    // The Transaction itself is the Key (for deduplication).
-    // The Value is empty unit type (no needed extra metadata yet).
+    // Key: signed tx hash,  Value: signed tx
     transactions: HashMap<B256, SignedTransaction>,
 }
 
