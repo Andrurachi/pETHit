@@ -1648,7 +1648,7 @@ dependencies = [
 
 [[package]]
 name = "pethit-consensus"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "alloy-primitives",
  "pethit-execution",
@@ -1658,7 +1658,7 @@ dependencies = [
 
 [[package]]
 name = "pethit-execution"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "alloy-primitives",
  "alloy-rlp",
@@ -1668,7 +1668,7 @@ dependencies = [
 
 [[package]]
 name = "pethit-node"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "pethit-consensus",
  "pethit-rpc",
@@ -1679,7 +1679,7 @@ dependencies = [
 
 [[package]]
 name = "pethit-rpc"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "alloy-primitives",
  "alloy-rlp",
@@ -1697,7 +1697,7 @@ dependencies = [
 
 [[package]]
 name = "pethit-storage"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "alloy-primitives",
  "alloy-rlp",
@@ -1705,7 +1705,7 @@ dependencies = [
 
 [[package]]
 name = "pethit-txpool"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "alloy-primitives",
  "k256",
@@ -1714,7 +1714,7 @@ dependencies = [
 
 [[package]]
 name = "pethit-wallet"
-version = "0.1.0"
+version = "0.4.0"
 dependencies = [
  "alloy-primitives",
  "alloy-rlp",
