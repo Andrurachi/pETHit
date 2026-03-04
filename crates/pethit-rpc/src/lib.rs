@@ -3,7 +3,7 @@ use alloy_rlp::Decodable;
 use axum::{
     Json, Router,
     extract::State,
-    routing::{get, post},
+    routing::post,
 };
 use pethit_consensus::SharedChain;
 use pethit_execution::SignedTransaction;
@@ -22,7 +22,7 @@ struct PutTransactionRequest {
 // Raw address hex the wallet sends
 #[derive(Deserialize)]
 struct GetAccountRequest {
-    pub raw_acc: String,
+    pub address: String,
 }
 
 #[derive(Serialize)]
@@ -86,14 +86,14 @@ async fn get_account_by_address(
     Json(payload): Json<GetAccountRequest>,
 ) -> Json<AccountResponse> {
     // Decode address
-    let address = Address::from_str(&payload.raw_acc).unwrap_or(Address::ZERO);
+    let address = Address::from_str(&payload.address).unwrap_or(Address::ZERO);
 
     //Get account from storage
     let account = state.storage.get_account(address);
 
     // Return JSON
     Json(AccountResponse {
-        address: payload.raw_acc,
+        address: payload.address,
         nonce: account.nonce,
         balance: account.balance.to_string(),
     })
@@ -168,8 +168,8 @@ pub async fn start_server(storage: SharedStorage, txpool: SharedTxPool, chain: S
     let app = Router::new()
         .route("/send_tx", post(send_transaction))
         //.route("/get_tx", get(get_transaction))
-        .route("/get_account", get(get_account_by_address))
-        .route("/get_block", get(get_block_by_hash))
+        .route("/get_account", post(get_account_by_address))
+        .route("/get_block", post(get_block_by_hash))
         .with_state(state);
 
     // Define the address

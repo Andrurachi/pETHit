@@ -135,6 +135,7 @@ async fn send_transaction(
 }
 
 // Helper to fetch nonce
+// Limitation: The same account can only send one tx per slot since nonce is fetched at DB
 async fn fetch_nonce(rpc_url: &str, address: Address) -> Result<u64, Box<dyn std::error::Error>> {
     let client = reqwest::Client::new();
     let url = format!("{}/get_account", rpc_url);
